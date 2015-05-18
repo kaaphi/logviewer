@@ -2,10 +2,8 @@ package com.kaaphi.logviewer.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.FontMetrics;
 import java.awt.Image;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -16,10 +14,11 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionListener;
+import java.awt.event.MouseListener;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,13 +27,11 @@ import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.EventObject;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.regex.Pattern;
 
-import javax.swing.AbstractCellEditor;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JColorChooser;
@@ -43,10 +40,9 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTable;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
-import javax.swing.ListSelectionModel;
 import javax.swing.Popup;
 import javax.swing.PopupFactory;
 import javax.swing.ScrollPaneConstants;
@@ -54,12 +50,9 @@ import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
 import javax.swing.UIManager;
 import javax.swing.border.EtchedBorder;
-import javax.swing.event.CaretEvent;
-import javax.swing.event.CaretListener;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.TableCellEditor;
-import javax.swing.table.TableCellRenderer;
-import javax.swing.table.TableColumn;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DefaultCaret;
+import javax.swing.text.Document;
 
 import org.apache.log4j.Logger;
 
@@ -67,22 +60,27 @@ import say.swing.JFontChooser;
 
 import com.kaaphi.logviewer.FileUtil;
 import com.kaaphi.logviewer.LogFile;
+import com.kaaphi.logviewer.LogLine;
+import com.kaaphi.logviewer.ui.LogDocument.LogLineElement;
 import com.kaaphi.logviewer.ui.filter.FiltersPanel;
-import com.kaaphi.logviewer.ui.search.SearchPanel;
-import com.kaaphi.logviewer.ui.search.SearchPanel.SearchPanelListener;
-import com.kaaphi.logviewer.ui.search.SearchSession;
+import com.kaaphi.logviewer.ui.search.TypeAheadSearchPanel;
+import com.kaaphi.logviewer.ui.search.TypeAheadSearchPanel.SearchPanelListener;
+import com.kaaphi.logviewer.ui.search.TypeAheadSearchSession;
 import com.kaaphi.logviewer.ui.util.MenuUtil;
 import com.kaaphi.logviewer.ui.util.MenuUtil.MenuAction;
-import com.kaaphi.logviewer.ui.util.RowHeader;
+import com.kaaphi.logviewer.util.DocumentAppender;
 
 public class LogFileViewer extends JPanel {
 	private static final Logger log = Logger.getLogger(LogFileViewer.class);
 	
-	private LogFileTableModel tableModel;
-	private JTable table;
+	//private LogFileTableModel tableModel;
+	//private JTable table;
+	private LogDocument doc;
+	private JTextArea textArea;
 	private JFrame frame;
-	private SearchPanel searchPanel;
-	private SearchSession searchSession;
+	private LogLineNumbers rowHeader;
+	private TypeAheadSearchPanel searchPanel;
+	private TypeAheadSearchSession searchSession;
 	private JPanel footer;
 	private FooterDetails footerDetails;
 	private LogViewerConfiguration config;
@@ -94,91 +92,37 @@ public class LogFileViewer extends JPanel {
 		
 		config = LogViewerConfiguration.getInstance();
 		config.loadConfig();
-		
-		tableModel = new LogFileTableModel();
-		
-		footerDetails = new FooterDetails();
-		tableModel.addTableModelListener(footerDetails);
-		
-		table = new JTable();
-		table.setModel(tableModel);
-		table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-		table.setColumnSelectionAllowed(false);
-		table.setAutoscrolls(false);
-		table.setBackground(Color.WHITE);
-		table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
-		final NonEditableEditor editor =  new NonEditableEditor();
-		table.setDefaultEditor(String.class, editor);
-		table.setFont(config.font.get());
-		table.setDefaultRenderer(String.class, new DefaultTableCellRenderer() {
-			public Component getTableCellRendererComponent(JTable table,
-					Object value, boolean isSelected,
-					boolean hasFocus, int row, int col) {
-				return super.getTableCellRendererComponent(table, value,
-						isSelected, false, row, col);
-			}
-		});
-		table.addKeyListener(new KeyListener() {
-			private boolean control = false;
-			
-			public void keyTyped(KeyEvent paramKeyEvent) {}
-			
-			public void keyReleased(KeyEvent event) {
-				switch(event.getKeyCode()) {
-				case KeyEvent.VK_ESCAPE:
-					table.clearSelection();
-					break;
-					
-				case KeyEvent.VK_CONTROL:
-					control = false;
-					break;
-				}
-			}
-			
-			public void keyPressed(KeyEvent event) {
-				switch(event.getKeyCode()) {
-				case KeyEvent.VK_CONTROL:
-					control = true;
-					break;
-					
-				case KeyEvent.VK_END:
-					if(control == true) {
-						scrollToY(table.getHeight());
-					} else {
-						scrollToX(table.getWidth());
-					}
-					break;
 
-				case KeyEvent.VK_HOME:
-					if(control == true) {
-						scrollToY(0);
-					} else {
-						scrollToX(0);
-					}
-					break;
-
-				case KeyEvent.VK_PAGE_DOWN:
-					scrollPage(1);
-					break;
-					
-				case KeyEvent.VK_PAGE_UP:
-					scrollPage(-1);
-					break;
-					
-				}
+		doc = new LogDocument();
+		footerDetails = new FooterDetails(doc);
+		textArea = new JTextArea(doc);
+		
+		textArea.setEditable(false);
+		textArea.setCaret(new DefaultCaret() {
+			@Override
+			public void focusGained(FocusEvent e) {
+				setVisible(true);
+				setSelectionVisible(true);
 			}
+
+			@Override
+			public void focusLost(FocusEvent e) {
+				setVisible(false);
+			}
+			
 		});
-		table.getSelectionModel().addListSelectionListener(footerDetails);
-		table.setShowGrid(false);
+				
+		textArea.addCaretListener(footerDetails);
 		
-		JScrollPane tableScroller = new JScrollPane(table);
-		tableScroller.setRowHeaderView(new RowHeader(table, new LogFileRowHeaderModel(tableModel)));
-		tableScroller.setColumnHeader(null);
-		tableScroller.setColumnHeaderView(null);
+		new SelectionInterpreter(textArea);
 		
+		JScrollPane scroller = new JScrollPane(textArea);
+		scroller.setRowHeaderView(rowHeader = new LogLineNumbers(textArea, scroller));
+		doc.addDocumentListener(rowHeader);
+			
 		JPanel corner = new JPanel();
 		corner.setBorder(BorderFactory.createEtchedBorder(EtchedBorder.LOWERED));
-		tableScroller.setCorner(ScrollPaneConstants.UPPER_LEFT_CORNER, corner);
+		scroller.setCorner(ScrollPaneConstants.UPPER_LEFT_CORNER, corner);
 		
 		filters = new FiltersPanel();
 		
@@ -192,10 +136,10 @@ public class LogFileViewer extends JPanel {
 		footer = new JPanel(new BorderLayout());
 		footer.add(footerDetails, BorderLayout.SOUTH);
 		
-		searchSession = new SearchSession(table, tableModel, editor.field);
+		searchSession = new TypeAheadSearchSession(textArea, doc);
 		
 		add(filters, BorderLayout.NORTH);
-		add(tableScroller, BorderLayout.CENTER);
+		add(scroller, BorderLayout.CENTER);
 		add(footer, BorderLayout.SOUTH);
 		
 		
@@ -204,7 +148,10 @@ public class LogFileViewer extends JPanel {
 		
 		buildMenuBar(frame);
 		frame.getContentPane().add(this);
-		setupTransferHandler(frame);
+		
+		TransferHandler th = createTransferHandler();
+		frame.setTransferHandler(th);
+		//textArea.setTransferHandler(th);
 		
 		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 	}
@@ -230,28 +177,11 @@ public class LogFileViewer extends JPanel {
 	    }
 	}
 	
-	private void scrollToY(int y) {
-		Rectangle visible = table.getVisibleRect();
-		Rectangle show = new Rectangle(visible.x, y, 1, 1);
-		table.scrollRectToVisible(show);
-	}
-	
-	private void scrollPage(int direction) {
-		Rectangle visible = table.getVisibleRect();
-		Rectangle show = new Rectangle(visible.x, visible.y+(int)(visible.height*direction), visible.width, visible.height);
-		table.scrollRectToVisible(show);
-	}
-	
-	private void scrollToX(int x) {
-		Rectangle visible = table.getVisibleRect();
-		Rectangle show = new Rectangle(x, visible.y, 1, 1);
-		table.scrollRectToVisible(show);
-	}
-	
 	public void displayFrame() {
 		frame.pack();
 		Dimension d = frame.getPreferredSize();
 		d.width = 800;
+		d.height = 600;
 		frame.setPreferredSize(d);
 		frame.setSize(d);
 		frame.setVisible(true);
@@ -259,41 +189,33 @@ public class LogFileViewer extends JPanel {
 	
 	private void setLogFile(LogFile file) {
 		file.setListener(footerDetails);
-		tableModel.setLogFile(file);
-		packColumns();
+		doc.setLogFile(file);
 		doFilter(false);
+		try {
+			//setTextAreaWidth();
+		} catch (Throwable e) {
+			e.printStackTrace();
+		}
+		rowHeader.setPreferredWidth();
 	}
-
+	
 	private void doFilter(final boolean scrollToRow) {
-		final int selectedRow = table.getSelectedRow();
-		final int lastSelectedFileLine = selectedRow < 0 ? -1 : tableModel.getUnfilteredRowIndex(selectedRow);
+		int currentIdx = textArea.getDocument().getDefaultRootElement().getElementIndex(textArea.getCaret().getDot());
+		final LogLine currentLine = currentIdx < 0 ? null : ((LogLineElement)textArea.getDocument().getDefaultRootElement().getElement(currentIdx)).getLine();
 		new Thread("FilterThread") {
 			public void run() {
+				textArea.getCaret().setDot(0);
 				if(scrollToRow) {
+					doc.applyFilter(filters.getFilter());
+					textArea.invalidate();
 					
-					tableModel.applyFilter(filters.getFilter());
-					
-					if(lastSelectedFileLine >= 0) {
-						SwingUtilities.invokeLater(new Runnable() {
-							public void run() {
-
-								int viewRow = 0;
-								int line = lastSelectedFileLine;
-								while(viewRow <= 0 && line > 0) {
-									viewRow = tableModel.getFilteredRowIndex(line);
-									log.trace(line + "," + viewRow);
-									line--;
-								}
-								Rectangle visible = table.getVisibleRect();
-								int y = table.getRowHeight()*viewRow;
-								Rectangle show = new Rectangle(visible.x, y, visible.width, table.getRowHeight());
-								log.trace(show);
-								table.scrollRectToVisible(show);
-							}
-						});
+					int offset = currentLine == null ? 0 : currentLine.getStartIndex();
+					if(offset < 0) {
+						offset = -offset;
 					}
+					textArea.getCaret().setDot(offset);
 				} else {
-					tableModel.applyFilter(filters.getFilter());
+					doc.applyFilter(filters.getFilter());
 				}
 
 			}
@@ -334,17 +256,23 @@ public class LogFileViewer extends JPanel {
 				//switches back
 				if(files != null) {
 					setLoading(true);
+					long start = System.currentTimeMillis();
 					LogFile logFile = new LogFile(FileUtil.readLines(files, Charset.defaultCharset()));
 					setLogFile(logFile);
 					loadedFiles = files;
+					long total = System.currentTimeMillis() - start;
+					log.debug("Total seconds loading = " + (total/1000.0));
 					setLoading(false);
 				}
 			} else if (files.size() == 1) {
 				File file = files.get(0);
 				setLoading(true);
+				long start = System.currentTimeMillis();
 				LogFile logFile = new LogFile(FileUtil.readLines(file, Charset.defaultCharset()));
 				setLogFile(logFile);
 				loadedFiles = files;
+				long total = System.currentTimeMillis() - start;
+				log.debug("Total seconds loading = " + (total/1000.0));
 				setLoading(false);
 			}
 		} finally {
@@ -370,80 +298,17 @@ public class LogFileViewer extends JPanel {
 		return showParentDir ? String.format("%s (%s)", fileString, dir): fileString;
 	}
 	
-	private void packColumns() {
-	    packColumns(table, 2);
-	}
-	
-	private void packColumns(JTable table, int margin) {
-		//table.setRowHeight(rowHeight)
-		
-		int height = table.getRowHeight();
-		log.debug("rowHeight: " + height);
-		FontMetrics metrics = table.getGraphics().getFontMetrics(config.font.get());
-		height = Math.max(height, metrics.getHeight()+4);
-		log.debug("rowHeight from metrics: " + height);
-		
-		//can use an alternate, slightly faster method if using a monospace font
-		/*
-		int charWidth = metrics.charWidth('W');
-		log.debug("charWidth: " + charWidth);
-		*/
-		
-	    for(int i = 0; i < table.getColumnCount(); i++) {
-	        TableColumn col = table.getColumnModel().getColumn(i);
-	        int width = 0;
-	        // Get width of column header
-	        TableCellRenderer renderer = col.getHeaderRenderer();
-	        if (renderer == null) {
-	            renderer = table.getTableHeader().getDefaultRenderer();
-	        }
-	        Component comp = renderer.getTableCellRendererComponent(
-	                table, col.getHeaderValue(), false, false, 0, 0);
-	        Dimension preferredSize = comp.getPreferredSize();
-			width = preferredSize.width;
-
-	        // Get maximum width of column data
-			
-			int testRows = Math.min(10, table.getRowCount());
-			int maxDiffWidth = 0;
-			for(int r=0; r<testRows; r++) {
-				renderer = table.getCellRenderer(r, i);
-	            comp = renderer.getTableCellRendererComponent(
-	                    table, table.getValueAt(r, i), false, false, r, i);
-	            preferredSize = comp.getPreferredSize();
-	            //int strWidth = table.getValueAt(r, i).toString().length()*charWidth;
-	            int strWidth = metrics.stringWidth(table.getValueAt(r, i).toString());
-	            maxDiffWidth = Math.max(maxDiffWidth, preferredSize.width - strWidth);
-			}
-			log.debug("maxDiffWidth: " + maxDiffWidth);
-			
-	        for (int r=0; r<table.getRowCount(); r++) {
-	        	 //int strWidth = table.getValueAt(r, i).toString().length()*charWidth;
-	            int strWidth = metrics.stringWidth(table.getValueAt(r, i).toString());
-	        	width = Math.max(width, strWidth + maxDiffWidth);
-	        }
-
-	        // Add margin
-	        width += 2*margin;
-
-	        log.debug("width: " + width);
-
-	        // Set the width
-	        col.setPreferredWidth(width);
-	    }
-		
-		table.setRowHeight(height);
-	}
-
-	private void setupTransferHandler(final JFrame frame) {
+	private TransferHandler createTransferHandler() {
 		try {
 			final DataFlavor uriListFlavor = new DataFlavor("text/uri-list; class=java.lang.String; charset=Unicode");
-			frame.setTransferHandler(new TransferHandler() {
+			
+			
+			return new TransferHandler() {
 
 
 				@Override
 				public boolean canImport(TransferSupport support) {
-					log.trace(String.format("canImport: %d", support.getSourceDropActions()));
+					log.debug(String.format("canImport: %d", support.getSourceDropActions()));
 					for(DataFlavor flavor : support.getDataFlavors()) {
 						log.trace(flavor);
 					}
@@ -489,7 +354,7 @@ public class LogFileViewer extends JPanel {
 
 					return true;
 				}
-			});
+			};
 		} catch (ClassNotFoundException e1) {
 			throw new Error(e1);
 		}
@@ -552,21 +417,20 @@ public class LogFileViewer extends JPanel {
 				new MenuAction("&Font...") {
 			public void actionPerformed(ActionEvent arg0) {
 				JFontChooser chooser = new JFontChooser();
-				chooser.setSelectedFont(table.getFont());
+				chooser.setSelectedFont(textArea.getFont());
 				int result = chooser.showDialog(LogFileViewer.this);
 				if(result == JFontChooser.OK_OPTION) {
-					table.setFont(chooser.getSelectedFont());
+					textArea.setFont(chooser.getSelectedFont());
 					config.font.set(chooser.getSelectedFont());
 					try {
 						config.storeConfig();
 					} catch (Exception e) {
 						log.error("Failed to save config.", e);
 					}
-					
-					packColumns();
 				}
 			}
 		},
+		
 		new MenuAction("Search &Color...") {
 			public void actionPerformed(ActionEvent arg0) {
 				Color newColor = JColorChooser.showDialog(LogFileViewer.this, "Choose Search Highlight Color", config.searchHighlight.get());
@@ -604,6 +468,7 @@ public class LogFileViewer extends JPanel {
 				}
 			}
 		},
+		
 		new MenuAction("Go to &Line", "L") {
 			public void actionPerformed(ActionEvent arg0) {
 				scrollToLine();
@@ -611,39 +476,63 @@ public class LogFileViewer extends JPanel {
 		}
 		);
 		
+		menu.createMenu("&Help", 
+				new MenuAction("&Error Log") {
+			public void actionPerformed(ActionEvent arg0) {
+				Document doc = ((DocumentAppender)Logger.getRootLogger().getAppender("doc")).getDocument();
+				
+				
+				JFrame f = new JFrame("Log");
+				
+				JTextArea area = new JTextArea(doc);
+				area.setEditable(false);
+				area.setCaretPosition(doc.getLength());
+				DefaultCaret caret = (DefaultCaret)area.getCaret();
+				caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
+				
+				f.getContentPane().add(new JScrollPane(area));
+				f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+				f.pack();
+				f.setVisible(true);
+				
+			}
+		});
+		
 		menu.installOn(frame);
 	}
 	
 	private void scrollToLine() {
 		String rowString = JOptionPane.showInputDialog(this, "Enter Line:");
 		if(rowString != null) {
-			int row = tableModel.getFilteredRowIndex(Integer.parseInt(rowString));
+			int row = doc.getLogFile().getFilteredRow(Integer.parseInt(rowString));
+						
 			if(row < 0) {
 				row = -row;
 			}
 			row--;
-			int h = table.getRowHeight();
-
-			Rectangle visible = table.getVisibleRect();
-			Rectangle rect = new Rectangle(visible.x, h*(row), visible.width, h);
-			table.scrollRectToVisible(rect);
-			table.setRowSelectionInterval(row, row);
+			
+			LogLine line = doc.getLogFile().getLine(row);
+			log.debug("line: " + line + " startOffset: " + line.getStartIndex());
+			int offset = line.getStartIndex();
+			
+			try {
+				Rectangle rect = textArea.modelToView(offset);
+			
+				textArea.scrollRectToVisible(rect);
+			} catch (BadLocationException e) {
+				log.error("Bad location!", e);
+			}
 		}
 	}
 
 	private boolean verifySearchPanel() {
 		if(searchPanel == null) {
-			searchPanel = new SearchPanel(searchSession);
+			searchPanel = new TypeAheadSearchPanel(searchSession);
 			
-			int selected = table.getSelectedRow();
-			log.trace("Selected="+selected);
-			if(selected >= 0) {
-			    searchSession.setStartingRow(selected);
-			}
+			searchSession.setStartingOffset(textArea.getCaretPosition());
 			
 			searchPanel.addSearchPanelListener(new SearchPanelListener() {
                 public void searchCanceled() {
-                    table.editingCanceled(null);
                     footer.remove(searchPanel);
                     searchPanel = null;
                     searchSession.reset(null);
@@ -661,7 +550,8 @@ public class LogFileViewer extends JPanel {
 		}
 	}
 	
-	private static class SelectionInterpreter implements CaretListener, MouseMotionListener, FocusListener {
+	
+	private static class SelectionInterpreter implements MouseListener, FocusListener, KeyListener {
 		private static final Pattern NUMBER = Pattern.compile("\\d+");
 		private SimpleDateFormat utc = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
 		private SimpleDateFormat local = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
@@ -670,18 +560,18 @@ public class LogFileViewer extends JPanel {
 		}
 		
 		private Popup popup;
-		private Point point;
-		private JTextField owner;
+		private JTextArea owner;
 		private JTextField tip;
+		private String currentSelection;
 		
-		public SelectionInterpreter(JTextField field) {
+		public SelectionInterpreter(JTextArea field) {
 			owner = field;
 			tip = new JTextField();
 			tip.setEditable(false);
 			
-			field.addCaretListener(this);
-			field.addMouseMotionListener(this);
+			field.addMouseListener(this);
 			field.addFocusListener(this);
+			field.addKeyListener(this);
 			tip.addFocusListener(this);
 		}
 
@@ -690,10 +580,17 @@ public class LogFileViewer extends JPanel {
 				popup.hide();
 				popup = null;
 			}
-			if(text != null && point != null) {
-				tip.setText(text);
-				popup = PopupFactory.getSharedInstance().getPopup(owner, tip, point.x, point.y);
-				popup.show();
+			if(text != null) {
+				try {
+					Rectangle r = owner.modelToView(owner.getSelectionStart());
+					Point p = new Point(r.x+10, r.y-10);
+					SwingUtilities.convertPointToScreen(p, owner);
+					tip.setText(text);
+					popup = PopupFactory.getSharedInstance().getPopup(owner, tip, p.x, p.y);
+					popup.show();
+				} catch (BadLocationException e) {
+					log.error("Bad location!", e);
+				}
 			}
 		}
 		
@@ -704,19 +601,10 @@ public class LogFileViewer extends JPanel {
 			}
 		}
 		
-		@Override
-		public void caretUpdate(CaretEvent e) {
-			if(e.getDot() != e.getMark()) {
-				String text = processText(owner.getSelectedText());
-				showPopup(text);
-			} else {
-				hidePopup();
-			}
-		}
-		
-		private String processText(String txt) {
-			if(NUMBER.matcher(txt).matches()) {
-				long stamp = Long.parseLong(txt);
+		private String getTimestampString() {
+			currentSelection = owner.getSelectedText();
+			if(NUMBER.matcher(currentSelection).matches()) {
+				long stamp = Long.parseLong(currentSelection);
 				if(stamp < 1000000000000l) {
 					stamp *= 1000l;
 				}
@@ -724,14 +612,6 @@ public class LogFileViewer extends JPanel {
 			}
 			return null;
 		}
-
-		@Override
-		public void mouseMoved(MouseEvent e) {
-			point = e.getLocationOnScreen();
-		}
-
-		@Override
-		public void mouseDragged(MouseEvent e) {}
 
 		@Override
 		public void focusGained(FocusEvent e) { }
@@ -742,44 +622,61 @@ public class LogFileViewer extends JPanel {
 				hidePopup();
 			}
 		}
-		
-	}
-	
-	private static class NonEditableEditor extends AbstractCellEditor implements TableCellEditor {
-		private JTextField field;
-		
-		public NonEditableEditor() {
-			field = new JTextField();
-			field.setEditable(false);
-			field.setBorder(BorderFactory.createEmptyBorder());
-			field.setBackground(Color.WHITE);
-			field.setCursor(Cursor.getPredefinedCursor(Cursor.TEXT_CURSOR));
-			new SelectionInterpreter(field);
+
+		@Override
+		public void keyTyped(KeyEvent e) {
+			//no op
+		}
+
+		@Override
+		public void keyPressed(KeyEvent e) {
+			if(e.getKeyCode() == KeyEvent.VK_T && (e.getModifiersEx() | InputEvent.CTRL_DOWN_MASK) == InputEvent.CTRL_DOWN_MASK) {
+				String timestamp = getTimestampString();
+				if(timestamp != null) {
+					showPopup(timestamp);
+				}
+			}
+			else if(e.getKeyCode() == KeyEvent.VK_C) {
+				owner.copy();
+			}
+		}
+
+		@Override
+		public void keyReleased(KeyEvent e) {
+			//no op
+		}
+
+		@Override
+		public void mouseClicked(MouseEvent e) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void mousePressed(MouseEvent e) {
+			hidePopup();			
+		}
+
+		@Override
+		public void mouseReleased(MouseEvent e) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void mouseEntered(MouseEvent e) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void mouseExited(MouseEvent e) {
+			// TODO Auto-generated method stub
 			
 		}
 		
-		@Override
-		public boolean isCellEditable(EventObject evo) {
-			if(evo instanceof MouseEvent) {
-				return ((MouseEvent)evo).getClickCount() >= 2;
-			}
-			return evo == null;
-		}
-
-		public Object getCellEditorValue() {
-			return field.getText();
-		}
-
-		@Override
-		public Component getTableCellEditorComponent(JTable table, Object value,
-				boolean isSelected, int row, int col) {
-			field.setText((String)value);
-			field.setEditable(false);
-			field.setFont(table.getFont());
-			return field;
-		}
-		
 	}
+	
 	
 	public static void main(final String[] args) throws Exception {
 		UIManager.setLookAndFeel(

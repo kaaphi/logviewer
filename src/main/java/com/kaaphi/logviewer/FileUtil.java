@@ -33,7 +33,7 @@ public class FileUtil {
 		String line;
 		int fileLine = 1;
 		while((line = reader.readLine()) != null) {
-			lines.add(new LogLine(line, file, lineNumber++, fileLine++));
+			lines.add(new LogLine(line+"\n", file, lineNumber++, fileLine++));
 		}
 		
 		reader.close();

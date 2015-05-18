@@ -10,18 +10,18 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
-import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.border.BevelBorder;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
-import javax.swing.event.TableModelEvent;
-import javax.swing.event.TableModelListener;
+import javax.swing.event.CaretEvent;
+import javax.swing.event.CaretListener;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.text.Element;
 
 import com.kaaphi.logviewer.FilterListener;
 
 
-public class FooterDetails extends JPanel implements TableModelListener,FilterListener,ListSelectionListener {
+public class FooterDetails extends JPanel implements DocumentListener,FilterListener,CaretListener {
     private static final String LABEL_NAME = "label";
     private static final String PROGRESS_NAME = "filter_progress";
 	private JLabel label;
@@ -32,8 +32,9 @@ public class FooterDetails extends JPanel implements TableModelListener,FilterLi
 	private int rowCount;
 	private int totalRows;
 	private int selectionSize;
+	private LogDocument doc;
 	
-    public FooterDetails() {
+    public FooterDetails(LogDocument doc) {
     	layout = new CardLayout();
     	setLayout(layout);
         label = new JLabel();
@@ -55,19 +56,11 @@ public class FooterDetails extends JPanel implements TableModelListener,FilterLi
         add(progressPanel, PROGRESS_NAME);
         setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
         layout.show(this, LABEL_NAME);
-    }
-    
-    
-    @Override
-    public void tableChanged(TableModelEvent e) {
-        LogFileTableModel model = (LogFileTableModel) e.getSource();
         
-        rowCount = model.getRowCount();
-        totalRows = model.getUnfilteredRowCount();
-        updateLabel();
+        this.doc = doc;
+        doc.addDocumentListener(this);
     }
-
-
+    
 	@Override
 	public void filteringStarted() {
 		continueFiltering = true;
@@ -100,7 +93,7 @@ public class FooterDetails extends JPanel implements TableModelListener,FilterLi
 		return continueFiltering;
 	}
 
-
+	/*
 	@Override
 	public void valueChanged(ListSelectionEvent e) {
 		if(!e.getValueIsAdjusting()) {
@@ -113,6 +106,7 @@ public class FooterDetails extends JPanel implements TableModelListener,FilterLi
 			updateLabel();
 		}
 	}
+	*/
 	
 	private void updateLabel() {
 		if(selectionSize > 0) {
@@ -120,6 +114,74 @@ public class FooterDetails extends JPanel implements TableModelListener,FilterLi
 		} else {
 			label.setText(String.format("%d/%d", rowCount, totalRows));
 		}
+	}
+
+
+	@Override
+	public void insertUpdate(DocumentEvent e) {
+		change(e);
+	}
+
+
+	@Override
+	public void removeUpdate(DocumentEvent e) {
+		change(e);
+	}
+	
+	private void change(DocumentEvent e) {
+		LogDocument d =  (LogDocument)e.getDocument();
+
+		rowCount = d.getLogFile().size();
+		totalRows =d.getLogFile().unfilteredSize();
+		updateLabel();
+	}
+
+
+	@Override
+	public void changedUpdate(DocumentEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void caretUpdate(CaretEvent e) {
+		if(e.getDot() != e.getMark()) {
+			int idx1 = doc.getDefaultRootElement().getElementIndex(e.getDot());
+			int idx2 = doc.getDefaultRootElement().getElementIndex(e.getMark());
+			
+			int startIdx, endIdx;
+			int startOffset, endOffset;
+			if(idx1 == idx2) {
+				selectionSize = 0;
+			} else { 
+				if(idx1 < idx2) {
+					startIdx = idx1;
+					endIdx = idx2;
+					startOffset = e.getDot();
+					endOffset = e.getMark();							
+				} else {
+					startIdx = idx2;
+					endIdx = idx1;
+					startOffset = e.getMark();	
+					endOffset =  e.getDot();
+				}
+			
+				Element start = doc.getDefaultRootElement().getElement(startIdx);
+				Element end = doc.getDefaultRootElement().getElement(endIdx);
+				if(startOffset == start.getEndOffset()) {
+					startIdx++;
+				}
+				if(endOffset == end.getStartOffset()) {
+					endIdx --;
+				}
+				
+				selectionSize = (endIdx - startIdx)+1;
+			}
+		} else {
+			selectionSize = 0;
+		}
+		
+		updateLabel();
 	}
 
 }

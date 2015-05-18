@@ -36,7 +36,7 @@ public class OrderFilesPanel extends JPanel {
 		
 		model = new OrderableListModel<File>(files);
 		model.sort(FileUtil.getLastModifiedComparator());
-		final JList fileList = new JList(model);
+		final JList<File> fileList = new JList<>(model);
 		fileList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		final JButton up = new JButton("\u2191");
 		final JButton down = new JButton("\u2193");
@@ -152,7 +152,7 @@ public class OrderFilesPanel extends JPanel {
 		System.out.println(showOrderFilesDialog(null, Arrays.asList(new File(".").listFiles())));
 	}
 	
-	private static class OrderableListModel<T> extends AbstractListModel {
+	private static class OrderableListModel<T> extends AbstractListModel<T> {
 		private List<T> items;
 		
 		public OrderableListModel(List<T> items) {
@@ -160,7 +160,7 @@ public class OrderFilesPanel extends JPanel {
 		}
 		
 		@Override
-		public Object getElementAt(int i) {
+		public T getElementAt(int i) {
 			return items.get(i);
 		}
 

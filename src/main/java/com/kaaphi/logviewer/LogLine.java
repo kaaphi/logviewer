@@ -3,10 +3,11 @@ package com.kaaphi.logviewer;
 import java.io.File;
 
 public class LogLine {
-	private String line;
-	private File file;
-	private int fileLineNumber;
-	private int lineNumber;
+	private final String line;
+	private final File file;
+	private final int fileLineNumber;
+	private final int lineNumber;
+	private int startIndex;
 	
 	public LogLine(String line, File file, int lineNumber, int fileLineNumber) {
 		this.line = line;
@@ -28,8 +29,29 @@ public class LogLine {
 	public int getLineNumber() {
 		return lineNumber;
 	}
-	
+	/*
 	public String toString() {
 		return line;
+	}
+	*/
+	public int setStartIndex(int index) {
+		this.startIndex = index;
+		return index + line.length();
+	}
+	
+	public int getStartIndex() {
+		return startIndex;
+	}
+	
+	public int getEndIndex() {
+		return startIndex + line.length();
+	}
+	
+	public boolean containsIndex(int idx) {
+		return idx >= startIndex && idx < startIndex + line.length();
+	}
+	
+	public String toString() {
+		return String.format("%s:%d (%d)", file.getName(), fileLineNumber, lineNumber);
 	}
 }
