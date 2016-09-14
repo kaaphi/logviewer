@@ -11,10 +11,14 @@ import javax.swing.AbstractListModel;
 import javax.swing.ComboBoxModel;
 import javax.swing.JComboBox;
 
+import org.apache.log4j.Logger;
+
 import com.kaaphi.logviewer.LogFile;
 import com.kaaphi.logviewer.LogFile.Filter;
 
 public class RegexFilterEditor extends AbstractFilterEditor {
+	private static final Logger log = Logger.getLogger(RegexFilterEditor.class);
+	
 	private JComboBox regex;
 	private FilterHistoryModel model;
 	
@@ -69,7 +73,8 @@ public class RegexFilterEditor extends AbstractFilterEditor {
 				addToSearchHistory(getText());
 				return filter;
 			}
-		} catch (PatternSyntaxException e) {
+		} catch (Throwable e) {
+			log.warn("Problem creating filter from filter string.", e);
 			return null;
 		}
 	}

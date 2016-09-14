@@ -117,10 +117,10 @@ public class LogDocument extends AbstractDocument {
 	}
 	
 	public void applyFilter(LogFile.Filter filter) {
+		fireRemoveUpdate();
 		writeLock();
 		log.applyFilter(filter);
 		writeUnlock();
-		fireRemoveUpdate();
 		fireInsertUpdate();
 	}
 	

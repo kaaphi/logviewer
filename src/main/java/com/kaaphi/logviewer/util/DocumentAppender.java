@@ -1,5 +1,8 @@
 package com.kaaphi.logviewer.util;
 
+import java.util.Arrays;
+import java.util.Iterator;
+
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import javax.swing.text.PlainDocument;
@@ -36,7 +39,22 @@ public class DocumentAppender extends AppenderSkeleton {
 	@Override
 	protected void append(LoggingEvent evt) {
 		try {
-			doc.insertString(doc.getLength(), getLayout().format(evt), null);
+			StringBuilder msg = new StringBuilder();
+			msg.append(getLayout().format(evt));
+			String[] th = evt.getThrowableStrRep();
+			if(th != null) {
+				boolean first = true;
+				for(String stack : th) {
+					if(first) {
+						first = false;
+					} else {
+						msg.append("\t");
+					}
+					msg.append(stack).append("\n");
+				}
+			}
+			
+			doc.insertString(doc.getLength(), msg.toString(), null);
 		} catch (BadLocationException e) {
 			e.printStackTrace();
 		}

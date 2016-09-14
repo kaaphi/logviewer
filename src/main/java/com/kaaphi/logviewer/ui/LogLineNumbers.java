@@ -30,9 +30,13 @@ import javax.swing.text.Element;
 import javax.swing.text.JTextComponent;
 import javax.swing.text.StyleConstants;
 
+import org.apache.log4j.Logger;
+
 import com.kaaphi.logviewer.ui.LogDocument.LogLineElement;
 
 public class LogLineNumbers extends JPanel implements DocumentListener, ComponentListener, MouseListener, MouseMotionListener {
+	private static final Logger log = Logger.getLogger(LogFileViewer.class);
+	
 	private JTextComponent component;
 	private JScrollPane pane;
 	private HashMap<String, FontMetrics> fonts;
@@ -69,35 +73,45 @@ public class LogLineNumbers extends JPanel implements DocumentListener, Componen
 	public void paintComponent(Graphics g)
 	{
 		super.paintComponent(g);
+		try {
+		log.trace(String.format("this: %s; component: %s", this.getSize(), component.getSize()));
+			FontMetrics fontMetrics = component.getFontMetrics( component.getFont() );
+			Insets insets = getInsets();
+			int availableWidth = getSize().width - insets.left - insets.right;
 
-		FontMetrics fontMetrics = component.getFontMetrics( component.getFont() );
-		Insets insets = getInsets();
-		int availableWidth = getSize().width - insets.left - insets.right;
+			Rectangle clip = g.getClipBounds();
+			log.trace(String.format("Clip=%s", clip));
+			int rowStartOffset = component.viewToModel( new Point(0, clip.y) );
+			int endOffset = component.viewToModel( new Point(0, clip.y + clip.height) );
 
-		Rectangle clip = g.getClipBounds();
-		int rowStartOffset = component.viewToModel( new Point(0, clip.y) );
-		int endOffset = component.viewToModel( new Point(0, clip.y + clip.height) );
-		
-		int startIdx = component.getDocument().getDefaultRootElement().getElementIndex(rowStartOffset);
-		int endIdx = component.getDocument().getDefaultRootElement().getElementIndex(endOffset);
-		
-		for(int i = startIdx; i <= endIdx; i++) {
-			try
-            {
-    			
+			int startIdx = component.getDocument().getDefaultRootElement().getElementIndex(rowStartOffset);
+			int endIdx = component.getDocument().getDefaultRootElement().getElementIndex(endOffset);
+						
+			log.trace(String.format("rowStartOffset=%d; endOffset=%d; startIdx=%d; endIdx=%d", 
+					rowStartOffset, endOffset, startIdx, endIdx)); 
+
+			if(startIdx < 0 || endIdx < 0) {
+				return;
+			}
+			
+			for(int i = startIdx; i <= endIdx; i++) {
+
 				g.setColor( getForeground() );
 
-        			LogLineElement e = (LogLineElement) component.getDocument().getDefaultRootElement().getElement(i);
-    			String lineNumber = Integer.toString(e.getLine().getLineNumber());
-    			int stringWidth = getFontMetrics(getFont()).stringWidth( lineNumber );
-    			int x = getOffsetX(availableWidth, stringWidth) + insets.left;
+				LogLineElement e = (LogLineElement) component.getDocument().getDefaultRootElement().getElement(i);
+				String lineNumber = Integer.toString(e.getLine().getLineNumber());
+				log.trace(String.format("i=%d; lineNumber=%s", i, lineNumber)); 
+				int stringWidth = getFontMetrics(getFont()).stringWidth( lineNumber );
+				int x = getOffsetX(availableWidth, stringWidth) + insets.left;
 				int y = getOffsetY(e.getStartOffset(), fontMetrics);
 				g.drawString(lineNumber, x, y);
-    			
+
 			}
-			catch(Exception e) {break;}
 		}
 
+		catch(Exception e) {
+			log.warn("Log Line Error!", e);
+		}
 	}
 	
 	/*
@@ -194,19 +208,23 @@ public class LogLineNumbers extends JPanel implements DocumentListener, Componen
 
 		//  Update sizes when number of digits in the line number changes
 
+		int preferredWidth;
+		Dimension d = getSize();
 		if (lastDigits != digits)
 		{
 			lastDigits = digits;
 			FontMetrics fontMetrics = getFontMetrics( getFont() );
 			int width = fontMetrics.charWidth( '0' ) * digits;
 			Insets insets = getInsets();
-			int preferredWidth = insets.left + insets.right + width;
+			preferredWidth = insets.left + insets.right + width;
 
-			Dimension d = getSize();
-			d.setSize(preferredWidth, pane.getPreferredSize().getHeight());
-			setPreferredSize( d );
-			setSize( d );
+		} else {
+			preferredWidth = d.width;
 		}
+		
+		d.setSize(preferredWidth, component.getSize().getHeight());
+		setPreferredSize( d );
+		setSize( d );
 	}
 	
 	@Override
@@ -247,6 +265,7 @@ public class LogLineNumbers extends JPanel implements DocumentListener, Componen
 
 				if (count != lastCount)
 				{
+					log.trace(String.format("Repaint %d=>%d.", lastCount, count));
 					setPreferredWidth();
 					repaint();
 					lastCount = count;
@@ -292,7 +311,14 @@ public class LogLineNumbers extends JPanel implements DocumentListener, Componen
 			p.x = 0;
 			int offset = component.viewToModel(p);
 			int idx = component.getDocument().getDefaultRootElement().getElementIndex(offset);
-			component.select(offset, component.getDocument().getDefaultRootElement().getElement(idx).getEndOffset());
+			if(evt.isShiftDown()) {
+				int start = Math.min(component.getSelectionStart(), offset);
+				int end = Math.max(component.getSelectionEnd(), component.getDocument().getDefaultRootElement().getElement(idx).getEndOffset());
+				
+				component.select(start, end);
+			} else {
+				component.select(offset, component.getDocument().getDefaultRootElement().getElement(idx).getEndOffset());
+			}
 		} else if(SwingUtilities.isRightMouseButton(evt)) {
 			if(popup != null) {
 				popup.hide();

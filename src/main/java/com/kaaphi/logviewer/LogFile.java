@@ -12,6 +12,8 @@ import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
 
+import com.kaaphi.logviewer.ui.filter.ComplexContainsFilter;
+
 
 public class LogFile implements Iterable<String> {
 	private static final Logger log = Logger.getLogger(LogFile.class);
@@ -210,40 +212,8 @@ public class LogFile implements Iterable<String> {
 		};
 	}
 
-	private static Pattern unescapePattern = Pattern.compile("\\\\(.)");
 	public static Filter createContainsFilter(String str) {
-		/*
-		 * This only half-works. We will split on pipes that aren't preceded by
-		 * a backslash, but we don't check to see if that backslash is itself
-		 * escaped. Except for file path searches, this will be rare, and in
-		 * almost all file path searches, it shouldn't matter. If it does
-		 * matter, the user can fall back on a regex search.
-		 */
-		final String[] lcaseStrs = str.split("(?<!\\\\)\\|");
-		for(int i = 0; i < lcaseStrs.length; i++) {
-			Matcher m = unescapePattern.matcher(lcaseStrs[i]);
-			lcaseStrs[i] = m.replaceAll("$1").toLowerCase();
-		}
-		log.debug("Filters: " + Arrays.toString(lcaseStrs));
-		if(lcaseStrs.length > 1) {
-			return new Filter() {
-				public boolean filter(String line) {
-					String lcaseLine = line.toLowerCase();
-					for(String str : lcaseStrs) {
-						if(lcaseLine.contains(str)) {
-							return true;
-						}
-					}
-					return false;
-				}
-			};
-		} else {
-			return new Filter() {
-				public boolean filter(String line) {
-					return line.toLowerCase().contains(lcaseStrs[0]);
-				}
-			};
-		}
+		return new ComplexContainsFilter(str);
 	}
 
 	private class ViewList extends AbstractList<LogLine> implements RandomAccess {

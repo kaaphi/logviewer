@@ -492,7 +492,7 @@ public class LogFileViewer extends JPanel {
 				
 				f.getContentPane().add(new JScrollPane(area));
 				f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-				f.pack();
+				f.setSize(1024, 768);
 				f.setVisible(true);
 				
 			}
@@ -679,6 +679,10 @@ public class LogFileViewer extends JPanel {
 	
 	
 	public static void main(final String[] args) throws Exception {
+		Thread.setDefaultUncaughtExceptionHandler((thread, th) -> {
+			log.error(String.format("Uncaught Exception on Thread %s: %s", thread, th), th);
+		});
+		
 		UIManager.setLookAndFeel(
 	            UIManager.getSystemLookAndFeelClassName());
 
