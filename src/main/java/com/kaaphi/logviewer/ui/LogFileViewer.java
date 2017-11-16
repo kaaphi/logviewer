@@ -42,6 +42,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.JViewport;
 import javax.swing.KeyStroke;
 import javax.swing.Popup;
 import javax.swing.PopupFactory;
@@ -56,8 +57,7 @@ import javax.swing.text.Document;
 
 import org.apache.log4j.Logger;
 
-import say.swing.JFontChooser;
-
+import com.kaaphi.logviewer.Bookmark;
 import com.kaaphi.logviewer.FileUtil;
 import com.kaaphi.logviewer.LogFile;
 import com.kaaphi.logviewer.LogLine;
@@ -70,6 +70,8 @@ import com.kaaphi.logviewer.ui.util.MenuUtil;
 import com.kaaphi.logviewer.ui.util.MenuUtil.MenuAction;
 import com.kaaphi.logviewer.util.DocumentAppender;
 
+import say.swing.JFontChooser;
+
 public class LogFileViewer extends JPanel {
 	private static final Logger log = Logger.getLogger(LogFileViewer.class);
 	
@@ -77,6 +79,7 @@ public class LogFileViewer extends JPanel {
 	//private JTable table;
 	private LogDocument doc;
 	private JTextArea textArea;
+	private JScrollPane scroller;
 	private JFrame frame;
 	private LogLineNumbers rowHeader;
 	private TypeAheadSearchPanel searchPanel;
@@ -86,6 +89,7 @@ public class LogFileViewer extends JPanel {
 	private LogViewerConfiguration config;
 	private List<File> loadedFiles;
 	private FiltersPanel filters;
+	private BookmarkDialog bookmarkDialog;
 	
 	public LogFileViewer() throws Exception  {
 		super(new BorderLayout());
@@ -116,7 +120,7 @@ public class LogFileViewer extends JPanel {
 		
 		new SelectionInterpreter(textArea);
 		
-		JScrollPane scroller = new JScrollPane(textArea);
+		scroller = new JScrollPane(textArea);
 		scroller.setRowHeaderView(rowHeader = new LogLineNumbers(textArea, scroller));
 		doc.addDocumentListener(rowHeader);
 			
@@ -138,6 +142,7 @@ public class LogFileViewer extends JPanel {
 		
 		searchSession = new TypeAheadSearchSession(textArea, doc);
 		
+		
 		add(filters, BorderLayout.NORTH);
 		add(scroller, BorderLayout.CENTER);
 		add(footer, BorderLayout.SOUTH);
@@ -154,6 +159,8 @@ public class LogFileViewer extends JPanel {
 		//textArea.setTransferHandler(th);
 		
 		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		
+		bookmarkDialog = new BookmarkDialog(this, this.frame);
 	}
 	
 	private static Image loadIcon() {
@@ -201,6 +208,23 @@ public class LogFileViewer extends JPanel {
 	
 	private void doFilter(final boolean scrollToRow) {
 		int currentIdx = textArea.getDocument().getDefaultRootElement().getElementIndex(textArea.getCaret().getDot());
+
+		final int currentYPos;
+		if(scrollToRow) {
+			int yPos = 0;
+			try {
+				Rectangle viewRect = scroller.getViewport().getViewRect();
+				Rectangle currentRect = textArea.modelToView(textArea.getCaret().getDot());
+				
+				yPos = currentRect.y - viewRect.y;
+			} catch (BadLocationException e) {
+				log.error("Bad location!", e);
+			}
+			currentYPos = yPos;
+		} else {
+			currentYPos = 0;
+		}
+		
 		final LogLine currentLine = currentIdx < 0 ? null : ((LogLineElement)textArea.getDocument().getDefaultRootElement().getElement(currentIdx)).getLine();
 		new Thread("FilterThread") {
 			public void run() {
@@ -213,7 +237,9 @@ public class LogFileViewer extends JPanel {
 					if(offset < 0) {
 						offset = -offset;
 					}
-					textArea.getCaret().setDot(offset);
+					
+					scrollToOffset(offset, currentYPos);
+					//textArea.getCaret().setDot(offset);
 				} else {
 					doc.applyFilter(filters.getFilter());
 				}
@@ -473,7 +499,29 @@ public class LogFileViewer extends JPanel {
 			public void actionPerformed(ActionEvent arg0) {
 				scrollToLine();
 			}
+		},
+		
+		new MenuAction("Show Book&marks", "M") {
+			public void actionPerformed(ActionEvent arg0) {
+				bookmarkDialog.setVisible(true);
+			}
+		},
+		
+		new MenuAction("&Bookmark Line", "B") {
+			public void actionPerformed(ActionEvent arg0) {
+				try {
+					int viewLine = textArea.getLineOfOffset(textArea.getCaretPosition());
+					LogLine logLine = doc.getLogFile().getLine(viewLine);
+					String bookmarkLabel = JOptionPane.showInputDialog(LogFileViewer.this, "Enter Bookmark Name:");
+					if(bookmarkLabel != null) {
+						bookmarkDialog.addBookmark(new Bookmark(bookmarkLabel, logLine));
+					}
+				} catch (Throwable th) {
+					log.error("Failed to add bookmark!", th);
+				}
+			}
 		}
+
 		);
 		
 		menu.createMenu("&Help", 
@@ -504,24 +552,40 @@ public class LogFileViewer extends JPanel {
 	private void scrollToLine() {
 		String rowString = JOptionPane.showInputDialog(this, "Enter Line:");
 		if(rowString != null) {
-			int row = doc.getLogFile().getFilteredRow(Integer.parseInt(rowString));
-						
-			if(row < 0) {
-				row = -row;
-			}
-			row--;
+			scrollToLine(Integer.parseInt(rowString));
+		}
+	}
+	
+	public void scrollToLine(int lineNumber) {
+		int row = doc.getLogFile().getFilteredRow(lineNumber);
+		
+		if(row < 0) {
+			row = -row;
+		}
+		row--;
+		
+		LogLine line = doc.getLogFile().getLine(row);
+		log.debug("line: " + line + " startOffset: " + line.getStartIndex());
+		int offset = line.getStartIndex();
+		scrollToOffset(offset, 0);
+	}
+	
+	private void scrollToOffset(int offset, int yPos) {
+		try {
+			Rectangle rect = textArea.modelToView(offset);
 			
-			LogLine line = doc.getLogFile().getLine(row);
-			log.debug("line: " + line + " startOffset: " + line.getStartIndex());
-			int offset = line.getStartIndex();
+			JViewport port = (JViewport) textArea.getParent();
+			log.debug("Viewable rect: "+rect+", view size: "+scroller.getViewport().getExtentSize());
 			
-			try {
-				Rectangle rect = textArea.modelToView(offset);
+			rect.y -= yPos;
+			rect.height = port.getExtentSize().height;
+			log.debug("Modified rect: "+rect);
 			
-				textArea.scrollRectToVisible(rect);
-			} catch (BadLocationException e) {
-				log.error("Bad location!", e);
-			}
+			textArea.scrollRectToVisible(rect);
+			textArea.getCaret().setDot(offset);
+			textArea.requestFocus();
+		} catch (BadLocationException e) {
+			log.error("Bad location!", e);
 		}
 	}
 
