@@ -27,11 +27,11 @@ public class MenuUtil {
 		frame.setJMenuBar(bar);
 	}
 	
-	public void createMenu(String label, MenuAction... actions) {
+	public void createMenu(String label, MenuEntry... actions) {
 		JMenu menu = new JMenu();
 		label = setLabelAndMnemonic(menu, label);
 
-		for(MenuAction action : actions) {
+		for(MenuEntry action : actions) {
 			menu.add(action.createMenuItem());
 		}
 		
@@ -78,7 +78,11 @@ public class MenuUtil {
 		return code;
 	}
 	
-	public static abstract class MenuAction extends AbstractAction {
+	public static interface MenuEntry {
+		JMenuItem createMenuItem();
+	}
+	
+	public static abstract class MenuAction extends AbstractAction implements MenuEntry {
 		private int mnemonic = -1;	
 		private KeyStroke accel;
 		

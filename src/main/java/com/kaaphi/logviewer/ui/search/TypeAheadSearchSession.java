@@ -25,6 +25,7 @@ public class TypeAheadSearchSession {
     private LogDocument doc;
     private String searchString;
     private HighlightPainter painter;
+    private Object searchHighlight;
     
     
     public TypeAheadSearchSession(JTextArea textArea, LogDocument doc) {
@@ -43,7 +44,9 @@ public class TypeAheadSearchSession {
         currentElement= 0;
         currentIndex = 0;
         Highlighter highlighter = textArea.getHighlighter();
-     	highlighter.removeAllHighlights();
+        if(searchHighlight != null) {
+        	highlighter.removeHighlight(searchHighlight);
+        }
     }
     
     public void updateSearchString(String searchString) {
@@ -129,9 +132,11 @@ public class TypeAheadSearchSession {
     	rect1.width = rect2.x - rect1.x;
     	textArea.scrollRectToVisible(rect1);
     	Highlighter highlighter = textArea.getHighlighter();
-    	highlighter.removeAllHighlights();
+    	if(searchHighlight != null) {
+    		highlighter.removeHighlight(searchHighlight);
+    	}
     	try {
-    		highlighter.addHighlight(offset, offset+searchString.length(), painter);
+    		searchHighlight = highlighter.addHighlight(offset, offset+searchString.length(), painter);
     	} catch (BadLocationException e) {
     		e.printStackTrace();
     	}

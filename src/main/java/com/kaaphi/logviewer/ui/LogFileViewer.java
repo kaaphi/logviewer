@@ -90,6 +90,7 @@ public class LogFileViewer extends JPanel {
 	private List<File> loadedFiles;
 	private FiltersPanel filters;
 	private BookmarkDialog bookmarkDialog;
+	private SequenceHighlighter sequenceHighlighter;
 	
 	public LogFileViewer() throws Exception  {
 		super(new BorderLayout());
@@ -161,6 +162,9 @@ public class LogFileViewer extends JPanel {
 		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		
 		bookmarkDialog = new BookmarkDialog(this, this.frame);
+		
+		sequenceHighlighter = new SequenceHighlighter(scroller.getViewport(), textArea);
+		scroller.getViewport().addChangeListener(sequenceHighlighter);
 	}
 	
 	private static Image loadIcon() {
@@ -247,27 +251,27 @@ public class LogFileViewer extends JPanel {
 			}
 		}.start();
 	}
-
-	private void setLoading(final boolean isLoading) {
-		log.debug("Start set loading " + isLoading);
-		final Runnable r = new Runnable() {
-			public void run() {
-				log.debug("Run set loading " + isLoading);
-				if(isLoading) {
-			        frame.setTitle("LogViewer - loading...");
-			        frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-			    } else {
-			    	frame.setTitle("LogViewer - " + concatFileNames(loadedFiles));
-			        frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-			    }
-			}
-		};
-		
+	
+	private static void ensureDispatchThread(Runnable r) {
 		if(SwingUtilities.isEventDispatchThread()) {
 			r.run();
 		} else {
 			SwingUtilities.invokeLater(r);
 		}
+	}
+
+	private void setLoading(final boolean isLoading) {
+		log.debug("Start set loading " + isLoading);
+		ensureDispatchThread(() -> {
+			log.debug("Run set loading " + isLoading);
+			if(isLoading) {
+				frame.setTitle("LogViewer - loading...");
+				frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+			} else {
+				frame.setTitle("LogViewer - " + concatFileNames(loadedFiles));
+				frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+			}
+		});
 	}
 	
 	private void setLogFiles(File ... files) throws IOException {
@@ -469,6 +473,27 @@ public class LogFileViewer extends JPanel {
 						log.error("Failed to save config.", e);
 					}
 				}				
+			}
+		},
+		
+		new MenuAction("Toggle Style Token 1", "1") {
+			public void actionPerformed(ActionEvent arg0) {
+				sequenceHighlighter.toggleSequence(textArea.getSelectedText(), Color.CYAN);
+			}
+		},
+		new MenuAction("Toggle Style Token 2", "2") {
+			public void actionPerformed(ActionEvent arg0) {
+				sequenceHighlighter.toggleSequence(textArea.getSelectedText(), Color.PINK);
+			}
+		},
+		new MenuAction("Toggle Style Token 3", "3") {
+			public void actionPerformed(ActionEvent arg0) {
+				sequenceHighlighter.toggleSequence(textArea.getSelectedText(), Color.ORANGE);
+			}
+		},
+		new MenuAction("Toggle Style Token 4", "4") {
+			public void actionPerformed(ActionEvent arg0) {
+				sequenceHighlighter.toggleSequence(textArea.getSelectedText(), Color.GREEN);
 			}
 		}
 		);
