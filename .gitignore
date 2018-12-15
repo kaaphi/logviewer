@@ -1,5 +1,14 @@
-ext
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
 build
-dist
+
+ext
 logviewer.cfg
-/bin-eclipse
+bin-eclipse
+
+#eclipse
+.classpath
+.project
+.settings

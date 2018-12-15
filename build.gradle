@@ -1,0 +1,40 @@
+buildscript {
+  repositories {
+    jcenter()
+  }
+  dependencies {
+    classpath 'edu.sc.seis.gradle:launch4j:2.4.4'
+  }
+}
+
+
+apply plugin: 'java'
+apply plugin: 'edu.sc.seis.launch4j'
+apply plugin: 'distribution'
+
+version = '1.0'
+
+repositories {
+    jcenter()
+}
+
+createExe {
+  mainClassName = "com.kaaphi.logviewer.ui.LogFileViewer"
+  icon = "${projectDir}/src/main/resources/icon.ico"
+  jvmOptions  = ["-Xmx2048M"]
+}
+
+distributions {
+    main {
+        contents {
+            from createExe
+         }
+    }
+}
+
+dependencies {
+    compile 'log4j:log4j:1.2.17'
+    compile 'com.rover12421.opensource:JFontChooser:1.0.5-2'
+
+    testCompile 'junit:junit:4.12'
+}
