@@ -30,7 +30,9 @@ import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
@@ -396,7 +398,7 @@ public class LogFileViewer extends JPanel {
 		
 		MenuUtil menu = new MenuUtil();
 		
-		menu.createMenu("&File", 
+		menu.addMenu("&File", 
 				new MenuAction("&Open...", "O") {
 			public void actionPerformed(ActionEvent arg0) {
 				if(chooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
@@ -443,7 +445,7 @@ public class LogFileViewer extends JPanel {
 		}
 		);
 
-		menu.createMenu("&View",
+		menu.addMenu("&View",
 				new MenuAction("&Font...") {
 			public void actionPerformed(ActionEvent arg0) {
 				JFontChooser chooser = new JFontChooser();
@@ -476,29 +478,17 @@ public class LogFileViewer extends JPanel {
 			}
 		},
 		
-		new MenuAction("Toggle Style Token 1", "1") {
-			public void actionPerformed(ActionEvent arg0) {
-				sequenceHighlighter.toggleSequence(textArea.getSelectedText(), Color.CYAN);
-			}
-		},
-		new MenuAction("Toggle Style Token 2", "2") {
-			public void actionPerformed(ActionEvent arg0) {
-				sequenceHighlighter.toggleSequence(textArea.getSelectedText(), Color.PINK);
-			}
-		},
-		new MenuAction("Toggle Style Token 3", "3") {
-			public void actionPerformed(ActionEvent arg0) {
-				sequenceHighlighter.toggleSequence(textArea.getSelectedText(), Color.ORANGE);
-			}
-		},
-		new MenuAction("Toggle Style Token 4", "4") {
-			public void actionPerformed(ActionEvent arg0) {
-				sequenceHighlighter.toggleSequence(textArea.getSelectedText(), Color.GREEN);
-			}
-		}
+		MenuUtil.createMenu("Style Token", Stream.of(
+				buildStyleTokenMenu(1, Color.CYAN),
+				buildStyleTokenMenu(2, Color.PINK),
+				buildStyleTokenMenu(3, Color.ORANGE),
+				buildStyleTokenMenu(4, Color.GREEN)
+				).flatMap(Function.identity())
+				.toArray(MenuAction[]::new)
+				)
 		);
 		
-		menu.createMenu("&Search", 
+		menu.addMenu("&Search", 
 				new MenuAction("&Search", "S") {
 			public void actionPerformed(ActionEvent arg0) {
 				if(verifySearchPanel()) {
@@ -549,7 +539,7 @@ public class LogFileViewer extends JPanel {
 
 		);
 		
-		menu.createMenu("&Help", 
+		menu.addMenu("&Help", 
 				new MenuAction("&Error Log") {
 			public void actionPerformed(ActionEvent arg0) {
 				Document doc = ((DocumentAppender)Logger.getRootLogger().getAppender("doc")).getDocument();
@@ -572,6 +562,21 @@ public class LogFileViewer extends JPanel {
 		});
 		
 		menu.installOn(frame);
+	}
+	
+	private Stream<MenuAction> buildStyleTokenMenu(int number, Color color) {
+		return Stream.of(
+				new MenuAction("Toggle Style Token " + number, Integer.toString(number)) {
+					public void actionPerformed(ActionEvent arg0) {
+						sequenceHighlighter.toggleSequence(textArea.getSelectedText(), color);
+					}
+				},
+				new MenuAction("Clear Style Token " + number) {
+					public void actionPerformed(ActionEvent arg0) {
+						sequenceHighlighter.clearSequences(color);
+					}
+				}
+				);
 	}
 	
 	private void scrollToLine() {

@@ -11,8 +11,6 @@ import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javax.swing.JTextArea;
 import javax.swing.JViewport;
@@ -76,6 +74,11 @@ public class SequenceHighlighter implements ChangeListener {
 		if(seq == null || !seq.getColor().equals(color)) {
 			sequences.put(text, new Sequence(text, color));
 		}
+		dataChanged();
+	}
+	
+	public void clearSequences(Color color) {
+		sequences.values().removeIf(seq -> seq.getColor().equals(color));
 		dataChanged();
 	}
 	

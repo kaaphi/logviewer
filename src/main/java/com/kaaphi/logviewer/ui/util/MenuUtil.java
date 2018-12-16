@@ -27,7 +27,7 @@ public class MenuUtil {
 		frame.setJMenuBar(bar);
 	}
 	
-	public void createMenu(String label, MenuEntry... actions) {
+	public static MenuEntry createMenu(String label, MenuEntry...actions) {
 		JMenu menu = new JMenu();
 		label = setLabelAndMnemonic(menu, label);
 
@@ -35,10 +35,14 @@ public class MenuUtil {
 			menu.add(action.createMenuItem());
 		}
 		
-		bar.add(menu);
+		return () -> menu;
 	}
 	
-	private String setLabelAndMnemonic(AbstractButton button, String label) {
+	public void addMenu(String label, MenuEntry... actions) {
+		bar.add(createMenu(label, actions).createMenuItem());
+	}
+	
+	private static String setLabelAndMnemonic(AbstractButton button, String label) {
 		String mnemonic = getMnemonic(label);
 		
 		label = stripAmpersand(label);
