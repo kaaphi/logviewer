@@ -30,8 +30,8 @@ import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.TimeZone;
-import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import javax.swing.BorderFactory;
@@ -70,12 +70,15 @@ import com.kaaphi.logviewer.ui.search.TypeAheadSearchPanel.SearchPanelListener;
 import com.kaaphi.logviewer.ui.search.TypeAheadSearchSession;
 import com.kaaphi.logviewer.ui.util.MenuUtil;
 import com.kaaphi.logviewer.ui.util.MenuUtil.MenuAction;
+import com.kaaphi.logviewer.ui.util.MenuUtil.MenuEntry;
 import com.kaaphi.logviewer.util.DocumentAppender;
 
 import say.swing.JFontChooser;
 
 public class LogFileViewer extends JPanel {
 	private static final Logger log = Logger.getLogger(LogFileViewer.class);
+
+	private static final Color[] styleTokenColors = {Color.CYAN, Color.PINK, Color.ORANGE, Color.GREEN};
 	
 	//private LogFileTableModel tableModel;
 	//private JTable table;
@@ -478,13 +481,20 @@ public class LogFileViewer extends JPanel {
 			}
 		},
 		
-		MenuUtil.createMenu("Style Token", Stream.of(
-				buildStyleTokenMenu(1, Color.CYAN),
-				buildStyleTokenMenu(2, Color.PINK),
-				buildStyleTokenMenu(3, Color.ORANGE),
-				buildStyleTokenMenu(4, Color.GREEN)
-				).flatMap(Function.identity())
-				.toArray(MenuAction[]::new)
+		MenuUtil.createMenu("Style Token", Stream.concat(
+				IntStream.range(0, styleTokenColors.length)
+				.mapToObj(i -> new MenuAction("Toggle Style Token " + (i+1), Integer.toString(i+1)) {
+					public void actionPerformed(ActionEvent arg0) {
+						sequenceHighlighter.toggleSequence(textArea.getSelectedText(), styleTokenColors[i]);
+					}
+				}),
+				IntStream.range(0, styleTokenColors.length)
+				.mapToObj(i -> new MenuAction("Clear Style Token " + (i+1)) {
+					public void actionPerformed(ActionEvent arg0) {
+						sequenceHighlighter.clearSequences(styleTokenColors[i]);
+					}
+				})
+				).toArray(MenuEntry[]::new)
 				)
 		);
 		
@@ -562,21 +572,6 @@ public class LogFileViewer extends JPanel {
 		});
 		
 		menu.installOn(frame);
-	}
-	
-	private Stream<MenuAction> buildStyleTokenMenu(int number, Color color) {
-		return Stream.of(
-				new MenuAction("Toggle Style Token " + number, Integer.toString(number)) {
-					public void actionPerformed(ActionEvent arg0) {
-						sequenceHighlighter.toggleSequence(textArea.getSelectedText(), color);
-					}
-				},
-				new MenuAction("Clear Style Token " + number) {
-					public void actionPerformed(ActionEvent arg0) {
-						sequenceHighlighter.clearSequences(color);
-					}
-				}
-				);
 	}
 	
 	private void scrollToLine() {
