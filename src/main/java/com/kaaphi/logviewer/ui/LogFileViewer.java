@@ -78,7 +78,13 @@ import say.swing.JFontChooser;
 public class LogFileViewer extends JPanel {
 	private static final Logger log = Logger.getLogger(LogFileViewer.class);
 
-	private static final Color[] styleTokenColors = {Color.CYAN, Color.PINK, Color.ORANGE, Color.GREEN};
+	private static final Color[] STYLE_TOKEN_COLORS = {
+			new Color(174,194,208), //pale blue
+			new Color(199,215,207), //pale green
+			new Color(235,228,194), //pale yellow
+			new Color(213,202,208), //pale purple
+			new Color(223,205,187) //pale orange
+			};
 	
 	//private LogFileTableModel tableModel;
 	//private JTable table;
@@ -447,6 +453,26 @@ public class LogFileViewer extends JPanel {
 			}
 		}
 		);
+		
+		
+		Stream.Builder<MenuEntry> styleEntries = Stream.builder();
+		IntStream.range(0, STYLE_TOKEN_COLORS.length)
+		.mapToObj(i -> new MenuAction("Toggle Style Token " + (i+1), Integer.toString(i+1)) {
+			public void actionPerformed(ActionEvent arg0) {
+				sequenceHighlighter.toggleSequence(textArea.getSelectedText(), STYLE_TOKEN_COLORS[i]);
+			}
+		}).forEach(styleEntries::add);
+		IntStream.range(0, STYLE_TOKEN_COLORS.length)
+		.mapToObj(i -> new MenuAction("Clear Style Token " + (i+1)) {
+			public void actionPerformed(ActionEvent arg0) {
+				sequenceHighlighter.clearSequences(STYLE_TOKEN_COLORS[i]);
+			}
+		}).forEach(styleEntries::add);
+		styleEntries.add(new MenuAction("Clear All Style Tokens") {
+			public void actionPerformed(ActionEvent arg0) {
+				sequenceHighlighter.clearAllSequences();
+			}
+		});		
 
 		menu.addMenu("&View",
 				new MenuAction("&Font...") {
@@ -481,21 +507,7 @@ public class LogFileViewer extends JPanel {
 			}
 		},
 		
-		MenuUtil.createMenu("Style Token", Stream.concat(
-				IntStream.range(0, styleTokenColors.length)
-				.mapToObj(i -> new MenuAction("Toggle Style Token " + (i+1), Integer.toString(i+1)) {
-					public void actionPerformed(ActionEvent arg0) {
-						sequenceHighlighter.toggleSequence(textArea.getSelectedText(), styleTokenColors[i]);
-					}
-				}),
-				IntStream.range(0, styleTokenColors.length)
-				.mapToObj(i -> new MenuAction("Clear Style Token " + (i+1)) {
-					public void actionPerformed(ActionEvent arg0) {
-						sequenceHighlighter.clearSequences(styleTokenColors[i]);
-					}
-				})
-				).toArray(MenuEntry[]::new)
-				)
+		MenuUtil.createMenu("Style Token", styleEntries.build().toArray(MenuEntry[]::new))
 		);
 		
 		menu.addMenu("&Search", 

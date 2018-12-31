@@ -82,6 +82,11 @@ public class SequenceHighlighter implements ChangeListener {
 		dataChanged();
 	}
 	
+	public void clearAllSequences() {
+		sequences.clear();
+		dataChanged();
+	}
+	
 	private void dataChanged() {
 		log.trace("data change, resetting highlights");
 		clearHighlights(highlights);
