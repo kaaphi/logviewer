@@ -12,6 +12,7 @@ import javax.swing.text.Highlighter.HighlightPainter;
 
 import org.apache.log4j.Logger;
 
+import com.kaaphi.logviewer.LogLine;
 import com.kaaphi.logviewer.ui.LogDocument;
 import com.kaaphi.logviewer.ui.LogDocument.LogLineElement;
 import com.kaaphi.logviewer.ui.LogViewerConfiguration;
@@ -126,6 +127,10 @@ public class TypeAheadSearchSession {
     }
     
     private void highlightSearch(int r, int i) throws BadLocationException {
+    	if(i > LogLine.MAX_VIEW_LENGTH) {
+    		i = LogLine.MAX_VIEW_LENGTH;
+    	}
+    	
     	int offset = doc.getDefaultRootElement().getElement(r).getStartOffset() + i;
     	Rectangle rect1 = textArea.modelToView(offset);
     	Rectangle rect2 = textArea.modelToView(offset+searchString.length());
@@ -143,14 +148,14 @@ public class TypeAheadSearchSession {
     }
 
     private int cellContains(int r, int i, boolean reverse) {
-    	String row = ((LogLineElement)doc.getDefaultRootElement().getElement(r)).getLine().getLine();
+    	String row = ((LogLineElement)doc.getDefaultRootElement().getElement(r)).getLine().getRawLine();
     	int index = reverse ? 
     			row.toLowerCase().lastIndexOf(searchString, i) :
     				row.toLowerCase().indexOf(searchString, i);
-    			if(index >= 0) {
-    				return index;
-    			}
-    			return -1;
+    	if(index >= 0) {
+    		return index;
+    	}
+    	return -1;
     }
 
 }

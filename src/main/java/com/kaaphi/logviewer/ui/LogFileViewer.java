@@ -17,6 +17,7 @@ import java.awt.event.FocusListener;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.File;
@@ -41,6 +42,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -131,6 +133,8 @@ public class LogFileViewer extends JPanel {
 		textArea.addCaretListener(footerDetails);
 		
 		new SelectionInterpreter(textArea);
+		
+		new FullLineViewer().addToTextArea(textArea);
 		
 		scroller = new JScrollPane(textArea);
 		scroller.setRowHeaderView(rowHeader = new LogLineNumbers(textArea, scroller));

@@ -163,7 +163,7 @@ public class LogFile implements Iterable<String> {
 			int size = logLines.size();
 			int startIndex = 0;
 			for(LogLine line : logLines) {
-				if(filter == null || filter.filter(line.getLine())) {
+				if(filter == null || filter.filter(line.getRawLine())) {
 					int viewIdx = j++;
 					view[viewIdx] = i;
 					model[i] = viewIdx; 

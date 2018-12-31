@@ -158,9 +158,10 @@ public class LogDocument extends AbstractDocument {
 		int currentIndex = 0;
 		for(LogLine line : log.lines()) {
  			int nextIndex = currentIndex + line.getLine().length();
-			if(pos >= currentIndex && pos < nextIndex) {
+ 			if(pos >= currentIndex && pos < nextIndex) {
 				return new LogLineElement(line);
 			}
+			currentIndex = nextIndex;
 		}
 		
 		return null;
