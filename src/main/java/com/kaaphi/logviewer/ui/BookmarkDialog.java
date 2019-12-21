@@ -48,7 +48,7 @@ public class BookmarkDialog extends JDialog {
 			public void keyPressed(KeyEvent e) {
 				Bookmark b = bookmarks.getSelectedValue();
 				if(b != null && e.getKeyCode() == KeyEvent.VK_DELETE) {
-					deleteBookmark(b);
+				  viewer.removeBookmark(b);
 				}
 			}
 		});

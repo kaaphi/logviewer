@@ -1,5 +1,6 @@
 package com.kaaphi.logviewer.ui;
 
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -75,7 +76,7 @@ public class LogLineNumbers extends JPanel implements DocumentListener, Componen
 		super.paintComponent(g);
 		try {
 		log.trace(String.format("this: %s; component: %s", this.getSize(), component.getSize()));
-			FontMetrics fontMetrics = component.getFontMetrics( component.getFont() );
+		FontMetrics fontMetrics = component.getFontMetrics( component.getFont() );
 			Insets insets = getInsets();
 			int availableWidth = getSize().width - insets.left - insets.right;
 
@@ -95,16 +96,24 @@ public class LogLineNumbers extends JPanel implements DocumentListener, Componen
 			}
 			
 			for(int i = startIdx; i <= endIdx; i++) {
-
-				g.setColor( getForeground() );
-
 				LogLineElement e = (LogLineElement) component.getDocument().getDefaultRootElement().getElement(i);
-				String lineNumber = Integer.toString(e.getLine().getLineNumber());
-				log.trace(String.format("i=%d; lineNumber=%s", i, lineNumber)); 
-				int stringWidth = getFontMetrics(getFont()).stringWidth( lineNumber );
+				int lineNumber = e.getLine().getLineNumber();
+				String lineNumberString = Integer.toString(lineNumber);
+				log.trace(String.format("i=%d; lineNumber=%s", i, lineNumberString)); 
+
+				if(((LogDocument)component.getDocument()).isBookmarked(lineNumber)) {
+				  g.setColor(Color.RED.darker());
+				  g.setFont(getBookmarkFont());
+				} else {
+				  g.setColor( getForeground() );
+				  g.setFont(getFont());
+				}
+				
+				int stringWidth = getFontMetrics(g.getFont()).stringWidth( lineNumberString );
 				int x = getOffsetX(availableWidth, stringWidth) + insets.left;
 				int y = getOffsetY(e.getStartOffset(), fontMetrics);
-				g.drawString(lineNumber, x, y);
+				
+				g.drawString(lineNumberString, x, y);
 
 			}
 		}
@@ -213,7 +222,7 @@ public class LogLineNumbers extends JPanel implements DocumentListener, Componen
 		if (lastDigits != digits)
 		{
 			lastDigits = digits;
-			FontMetrics fontMetrics = getFontMetrics( getFont() );
+			FontMetrics fontMetrics = getFontMetrics( getBookmarkFont() );
 			int width = fontMetrics.charWidth( '0' ) * digits;
 			Insets insets = getInsets();
 			preferredWidth = insets.left + insets.right + width;
@@ -225,6 +234,10 @@ public class LogLineNumbers extends JPanel implements DocumentListener, Componen
 		d.setSize(preferredWidth, component.getSize().getHeight());
 		setPreferredSize( d );
 		setSize( d );
+	}
+	
+	private Font getBookmarkFont() {
+	  return getFont().deriveFont(Font.BOLD);
 	}
 	
 	@Override

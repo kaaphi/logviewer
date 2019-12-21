@@ -555,7 +555,7 @@ public class LogFileViewer extends JPanel {
 					LogLine logLine = doc.getLogFile().getLine(viewLine);
 					String bookmarkLabel = JOptionPane.showInputDialog(LogFileViewer.this, "Enter Bookmark Name:");
 					if(bookmarkLabel != null) {
-						bookmarkDialog.addBookmark(new Bookmark(bookmarkLabel, logLine));
+					    addBookmark(new Bookmark(bookmarkLabel, logLine));
 					}
 				} catch (Throwable th) {
 					log.error("Failed to add bookmark!", th);
@@ -589,6 +589,19 @@ public class LogFileViewer extends JPanel {
 		
 		menu.installOn(frame);
 	}
+	
+	public void addBookmark(Bookmark bookmark) {
+      bookmarkDialog.addBookmark(bookmark);
+      doc.addBookmark(bookmark);
+      rowHeader.repaint();
+	}
+	
+	public void removeBookmark(Bookmark bookmark) {
+	  bookmarkDialog.deleteBookmark(bookmark);;
+	  doc.removeBookmark(bookmark);
+	  rowHeader.repaint();
+	}
+	
 	
 	private void scrollToLine() {
 		String rowString = JOptionPane.showInputDialog(this, "Enter Line:");

@@ -1,9 +1,10 @@
 package com.kaaphi.logviewer.ui;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-
+import java.util.Map;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentEvent.EventType;
 import javax.swing.text.AbstractDocument;
@@ -15,9 +16,8 @@ import javax.swing.text.Position;
 import javax.swing.text.Segment;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.undo.UndoableEdit;
-
 import org.apache.log4j.Logger;
-
+import com.kaaphi.logviewer.Bookmark;
 import com.kaaphi.logviewer.LogFile;
 import com.kaaphi.logviewer.LogLine;
 
@@ -29,6 +29,7 @@ public class LogDocument extends AbstractDocument {
 	
 	
 	private LogFile log;
+	private Map<Integer, Bookmark> bookmarks = new HashMap<>();
 	
 	
 	
@@ -87,6 +88,18 @@ public class LogDocument extends AbstractDocument {
 	public LogDocument() {
 		super(new LogContent());
 		this.log = EMPTY_LOG;
+	}
+	
+	public void addBookmark(Bookmark bookmark) {
+	  this.bookmarks.put(bookmark.getLine().getLineNumber(), bookmark);
+	}
+	
+	public void removeBookmark(Bookmark bookmark) {
+	  this.bookmarks.remove(bookmark.getLine().getLineNumber());
+	}
+	
+	public boolean isBookmarked(int lineNumber) {
+	  return bookmarks.containsKey(lineNumber);
 	}
 	
 	public void setLogFile(LogFile log) {
