@@ -37,11 +37,7 @@ public class LogLine {
   public int getLineNumber() {
     return lineNumber;
   }
-  /*
-	public String toString() {
-		return line;
-	}
-   */
+
   public int setStartIndex(int index) {
     this.startIndex = index;
     return index + lineView.length();

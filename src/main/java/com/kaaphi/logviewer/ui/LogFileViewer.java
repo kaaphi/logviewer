@@ -776,8 +776,7 @@ public class LogFileViewer extends JPanel {
 
     @Override
     public void mouseClicked(MouseEvent e) {
-      // TODO Auto-generated method stub
-
+      //no op
     }
 
     @Override
@@ -787,20 +786,17 @@ public class LogFileViewer extends JPanel {
 
     @Override
     public void mouseReleased(MouseEvent e) {
-      // TODO Auto-generated method stub
-
+      //no op
     }
 
     @Override
     public void mouseEntered(MouseEvent e) {
-      // TODO Auto-generated method stub
-
+      //no op
     }
 
     @Override
     public void mouseExited(MouseEvent e) {
-      // TODO Auto-generated method stub
-
+      //no op
     }
 
   }

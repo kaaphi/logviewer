@@ -102,62 +102,21 @@ public class LogFile implements Iterable<String> {
     return viewList;
   }
 
-  //private LogLine lastLogLine;
-  //private int lastIdx;
-  public int getLineIndex(int offset) {
-    /*
-		if(lastLogLine != null && lastIdx+1 < size()) {
-			LogLine line = getLine(lastIdx+1);
-			if(line.containsIndex(offset)) {
-				lastLogLine = line;
-				return ++lastIdx;
-			}
-			if(offset >= lastLogLine.getStartIndex()) {
-				for(int i = 0; i < 3 && lastIdx+i < size(); i++) {
-					LogLine line = getLine(lastIdx+i);
-					if(line.containsIndex(offset)) {
-						lastLogLine = line;
-						lastIdx += i;
-						return lastIdx;
-					}
-				}
-			} else if (offset < lastLogLine.getStartIndex()) {
-				for(int i = 0; i < 3 && lastIdx-i >= 0; i++) {
-					LogLine line = getLine(lastIdx-i);
-					if(line.containsIndex(offset)) {
-						lastLogLine = line;
-						lastIdx -= i;
-						return lastIdx;
-					}
-				}
-			}
-		}
-     */
-
+ public int getLineIndex(int offset) {
     LogLine key = new LogLine("", null, -1, -1);
     key.setStartIndex(offset);
     int index = Collections.binarySearch(lines(), key, offsetComparator);
     if(index < 0) {
       index = -index - 2;
     }
-    /*
-		if(index >= 0 && index < size()) {
-			lastLogLine = getLine(index);
-			lastIdx = index;
-		} else {
-			lastLogLine = null;
-		}
-     */
 
-    //System.out.format("%5d, %d%n", index, offset);
     return index;			
-
   }
 
   public void applyFilter(Filter filter) {
     try {
       if(listener != null) listener.filteringStarted();
-      //lastLogLine = null;
+
       int i = 0;
       int j = 0;
       int size = logLines.size();
@@ -186,7 +145,6 @@ public class LogFile implements Iterable<String> {
   }
 
   private void resetFilter() {
-    //lastLogLine = null;
     int i = 0;
     viewCharacterLength = 0;
     for(LogLine line : logLines) {
@@ -228,21 +186,5 @@ public class LogFile implements Iterable<String> {
       return LogFile.this.size();
     }
 
-  }
-
-  public static void main(String[] args) throws Exception {
-    /*
-		LogFile logFile = new LogFile(
-				FileUtil.readLines("testFile.dat", Charset.defaultCharset()),
-				createRegexColumnizer("(.*) (.*) (.*) (.*)", 1,2,3,4)
-		);
-
-
-		logFile.applyFilter(createRegexFilter(".*1.*"));
-
-		for(String[] line : logFile) {
-			System.out.println(Arrays.toString(line));
-		}
-     */
   }
 }
