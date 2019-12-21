@@ -4,7 +4,7 @@ import com.kaaphi.logviewer.LogFile;
 
 
 public interface FilterEditor {
-	public LogFile.Filter getFilter();
-	public boolean isFilterValid();
-	public void resetFilter();
+  public LogFile.Filter getFilter();
+  public boolean isFilterValid();
+  public void resetFilter();
 }
