@@ -19,6 +19,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.TextEvent;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -82,8 +83,6 @@ public class LogFileViewer extends JPanel {
       new Color(223,205,187) //pale orange
   };
 
-  //private LogFileTableModel tableModel;
-  //private JTable table;
   private LogDocument doc;
   private JTextArea textArea;
   private JScrollPane scroller;
@@ -98,6 +97,7 @@ public class LogFileViewer extends JPanel {
   private FiltersPanel filters;
   private BookmarkDialog bookmarkDialog;
   private SequenceHighlighter sequenceHighlighter;
+  private int mark;
 
   public LogFileViewer() throws Exception  {
     super(new BorderLayout());
@@ -514,7 +514,27 @@ public class LogFileViewer extends JPanel {
       }
     },
 
-        MenuUtil.createMenu("Style Token", styleEntries.build().toArray(MenuEntry[]::new))
+        MenuUtil.createMenu("Style &Token", styleEntries.build().toArray(MenuEntry[]::new)),
+        
+        new MenuAction("Set &Mark", KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, InputEvent.CTRL_DOWN_MASK)) {
+      @Override
+      public void actionPerformed(ActionEvent arg0) {
+        mark = textArea.getCaretPosition();
+      }
+    },
+        
+        new MenuAction("Select &Region", KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK)) {
+      @Override
+      public void actionPerformed(ActionEvent arg0) {
+        int startOffset = Math.min(mark, textArea.getCaretPosition());
+        int endOffset = Math.max(mark, textArea.getCaretPosition());
+        
+        startOffset = doc.getDefaultRootElement().getElement(doc.getLogFile().getLineIndex(startOffset)).getStartOffset();
+        endOffset = doc.getDefaultRootElement().getElement(doc.getLogFile().getLineIndex(endOffset)).getEndOffset();
+        
+        textArea.select(startOffset, endOffset);
+      }
+    }
         );
 
     menu.addMenu("&Search", 
@@ -570,6 +590,7 @@ public class LogFileViewer extends JPanel {
         }
       }
     }
+  
 
         );
 
