@@ -125,6 +125,7 @@ public class LogFileViewer extends JPanel {
     });
 
     textArea.addCaretListener(footerDetails);
+    textArea.setFont(config.font.get());
 
     new SelectionInterpreter(textArea);
 
