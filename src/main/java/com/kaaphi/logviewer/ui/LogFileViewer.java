@@ -125,7 +125,6 @@ public class LogFileViewer extends JPanel {
     });
 
     textArea.addCaretListener(footerDetails);
-    textArea.setFont(config.font.get());
 
     new SelectionInterpreter(textArea);
 
@@ -175,6 +174,8 @@ public class LogFileViewer extends JPanel {
 
     sequenceHighlighter = new SequenceHighlighter(scroller.getViewport(), textArea);
     scroller.getViewport().addChangeListener(sequenceHighlighter);
+
+    applyConfig();
   }
 
   private static Image loadIcon() {
@@ -488,8 +489,8 @@ public class LogFileViewer extends JPanel {
         chooser.setSelectedFont(textArea.getFont());
         int result = chooser.showDialog(LogFileViewer.this);
         if(result == JFontChooser.OK_OPTION) {
-          textArea.setFont(chooser.getSelectedFont());
           config.font.set(chooser.getSelectedFont());
+          applyConfig();
           try {
             config.storeConfig();
           } catch (Exception e) {
@@ -505,7 +506,7 @@ public class LogFileViewer extends JPanel {
         Color newColor = JColorChooser.showDialog(LogFileViewer.this, "Choose Search Highlight Color", config.searchHighlight.get());
         if(newColor != null) {
           config.searchHighlight.set(newColor);
-          searchSession.setSearchHighlightColor(newColor);					
+          applyConfig();
           try {
             config.storeConfig();
           } catch (Exception e) {
@@ -619,6 +620,12 @@ public class LogFileViewer extends JPanel {
     });
 
     menu.installOn(frame);
+  }
+
+  private void applyConfig() {
+    textArea.setFont(config.font.get());
+    filters.setFilterFont(config.font.get());
+    searchSession.setSearchHighlightColor(config.searchHighlight.get());
   }
 
   public void addBookmark(Bookmark bookmark) {

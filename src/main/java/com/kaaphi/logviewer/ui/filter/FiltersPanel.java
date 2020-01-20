@@ -1,6 +1,7 @@
 package com.kaaphi.logviewer.ui.filter;
 
 import java.awt.BorderLayout;
+import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -49,7 +50,10 @@ public class FiltersPanel extends AbstractFilterEditor implements ActionListener
     fireActionPerformed();
   }
 
-
+  @Override
+  public void setFilterFont(Font font) {
+    filterEditor.setFilterFont(font);
+  }
 
   @Override
   public Filter getFilter() {

@@ -1,6 +1,7 @@
 package com.kaaphi.logviewer.ui.filter;
 
 import java.awt.BorderLayout;
+import java.awt.Font;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.LinkedList;
@@ -53,6 +54,11 @@ public class RegexFilterEditor extends AbstractFilterEditor {
 
   private String getText() {
     return toStringEmptyIfNull(regex.getSelectedItem());
+  }
+
+  @Override
+  public void setFilterFont(Font font) {
+    regex.setFont(font);
   }
 
   @Override
