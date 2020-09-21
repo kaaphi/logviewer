@@ -1,5 +1,18 @@
 package com.kaaphi.logviewer.ui;
 
+import com.kaaphi.logviewer.Bookmark;
+import com.kaaphi.logviewer.FileUtil;
+import com.kaaphi.logviewer.LogFile;
+import com.kaaphi.logviewer.LogLine;
+import com.kaaphi.logviewer.ui.LogDocument.LogLineElement;
+import com.kaaphi.logviewer.ui.filter.FiltersPanel;
+import com.kaaphi.logviewer.ui.search.TypeAheadSearchPanel;
+import com.kaaphi.logviewer.ui.search.TypeAheadSearchPanel.SearchPanelListener;
+import com.kaaphi.logviewer.ui.search.TypeAheadSearchSession;
+import com.kaaphi.logviewer.ui.util.MenuUtil;
+import com.kaaphi.logviewer.ui.util.MenuUtil.MenuAction;
+import com.kaaphi.logviewer.ui.util.MenuUtil.MenuEntry;
+import com.kaaphi.logviewer.util.DocumentAppender;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -19,19 +32,21 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
-import java.awt.event.TextEvent;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import javax.swing.BorderFactory;
@@ -57,19 +72,6 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultCaret;
 import javax.swing.text.Document;
 import org.apache.log4j.Logger;
-import com.kaaphi.logviewer.Bookmark;
-import com.kaaphi.logviewer.FileUtil;
-import com.kaaphi.logviewer.LogFile;
-import com.kaaphi.logviewer.LogLine;
-import com.kaaphi.logviewer.ui.LogDocument.LogLineElement;
-import com.kaaphi.logviewer.ui.filter.FiltersPanel;
-import com.kaaphi.logviewer.ui.search.TypeAheadSearchPanel;
-import com.kaaphi.logviewer.ui.search.TypeAheadSearchPanel.SearchPanelListener;
-import com.kaaphi.logviewer.ui.search.TypeAheadSearchSession;
-import com.kaaphi.logviewer.ui.util.MenuUtil;
-import com.kaaphi.logviewer.ui.util.MenuUtil.MenuAction;
-import com.kaaphi.logviewer.ui.util.MenuUtil.MenuEntry;
-import com.kaaphi.logviewer.util.DocumentAppender;
 import say.swing.JFontChooser;
 
 public class LogFileViewer extends JPanel {
@@ -322,23 +324,72 @@ public class LogFileViewer extends JPanel {
     }
   }
 
-  private static String concatFileNames(List<File> files) {
-    StringBuilder sb = new StringBuilder();
+  static String concatFileNames(List<File> files) {
+    Iterator<File> it = files.iterator();
+    File first = it.next();
 
-    File dir = null;
-    boolean showParentDir = true;
-    for(File f : files) {
-      if(showParentDir && !f.getParentFile().equals(dir) && dir != null) {
-        showParentDir = false;
-      }
-      dir = f.getParentFile();
-      sb.append(", ");
-      sb.append(f.getName());
+    if(!it.hasNext()) {
+      return first.toString();
     }
 
-    String fileString = sb.toString().substring(2);
-    return showParentDir ? String.format("%s (%s)", fileString, dir): fileString;
+    /*
+    Determine whether the files are all in the same directory and determine the string index up to
+    which all the file names are the same.
+     */
+    File parentDir = first.getParentFile();
+    String firstFileName = first.getName();
+    int commonPrefixIdx = first.getName().length();
+    while(it.hasNext() && (parentDir != null || commonPrefixIdx > 0)) {
+      File file = it.next();
+      if(parentDir != null && !parentDir.equals(file.getParentFile())) {
+        parentDir = null;
+      }
+
+      String fileName = file.getName();
+      commonPrefixIdx = Math.min(commonPrefixIdx, fileName.length());
+      for(int i = 0; i <= commonPrefixIdx; i++) {
+        if(firstFileName.charAt(i) != fileName.charAt(i)) {
+          commonPrefixIdx = i;
+          break;
+        }
+      }
+    }
+
+    /*
+    Build the string to display for the file names
+     */
+    String fileString;
+    if(parentDir != null && commonPrefixIdx > 3) {
+      final int idx = commonPrefixIdx;
+      fileString = String.format("%s (%s)", firstFileName.substring(0, commonPrefixIdx), files.stream()
+          .map(File::getName)
+          .map(s -> s.substring(idx))
+          .collect(Collectors.joining(", "))
+      );
+    } else {
+      fileString = files.stream().map(File::getName).collect(Collectors.joining(", "));
+    }
+
+
+    if(parentDir != null) {
+      //build the string to display for the parent directory
+      String parentDirString = parentDir.toString();
+      if(parentDirString.length() > 50) {
+        Path path = parentDir.toPath();
+        for(int i = 0; i < path.getNameCount(); i++) {
+          parentDirString =  path.subpath(i, path.getNameCount()).toString();
+          if(parentDirString.length() < 50) {
+            break;
+          }
+        }
+      }
+
+      return String.format("%s : %s", parentDirString, fileString);
+    } else {
+      return fileString;
+    }
   }
+
 
   private TransferHandler createTransferHandler() {
     try {
