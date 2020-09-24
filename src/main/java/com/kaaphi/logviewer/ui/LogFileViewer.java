@@ -347,7 +347,7 @@ public class LogFileViewer extends JPanel {
 
       String fileName = file.getName();
       commonPrefixIdx = Math.min(commonPrefixIdx, fileName.length());
-      for(int i = 0; i <= commonPrefixIdx; i++) {
+      for(int i = 0; i < commonPrefixIdx; i++) {
         if(firstFileName.charAt(i) != fileName.charAt(i)) {
           commonPrefixIdx = i;
           break;

@@ -58,4 +58,17 @@ public class ConcatFileNamesTest {
 
     Assert.assertEquals("a.dbg, b.dbg", LogFileViewer.concatFileNames(files));
   }
+
+  @Test
+  public void testEmptyAfterPrefix() {
+    File parentDir = new File("C:/dev/myLogFiles/theAwesomeOnes");
+
+    List<File> files = IntStream.range(0, 3)
+        .mapToObj(i -> i == 0 ? "" : "." + i)
+        .map(i -> String.format("LogFileName.dbg%s", i))
+        .map(n -> new File(parentDir, n))
+        .collect(Collectors.toList());
+
+    Assert.assertEquals("C:\\dev\\myLogFiles\\theAwesomeOnes : LogFileName.dbg (, .1, .2)", LogFileViewer.concatFileNames(files));
+  }
 }
