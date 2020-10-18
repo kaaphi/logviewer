@@ -35,7 +35,7 @@ public class OrderFilesPanel extends JPanel {
     model = new OrderableListModel<File>(files);
     model.sort(FileUtil.getLastModifiedComparator());
     final JList<File> fileList = new JList<>(model);
-    fileList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+    fileList.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
     final JButton up = new JButton("\u2191");
     final JButton down = new JButton("\u2193");
 
@@ -70,18 +70,22 @@ public class OrderFilesPanel extends JPanel {
     up.addActionListener(new ActionListener() {
       @Override
       public void actionPerformed(ActionEvent e) {
-        int i = fileList.getSelectedIndex();
-        model.moveUp(i);
-        fileList.setSelectedIndex(i-1);
+        int min = fileList.getMinSelectionIndex();
+        int max = fileList.getMaxSelectionIndex();
+        if(model.moveUp(min, max)) {
+          fileList.getSelectionModel().setSelectionInterval(min-1,max-1);
+        }
       }
     });
 
     down.addActionListener(new ActionListener() {
       @Override
       public void actionPerformed(ActionEvent e) {
-        int i = fileList.getSelectedIndex();
-        model.moveDown(i);
-        fileList.setSelectedIndex(i+1);
+        int min = fileList.getMinSelectionIndex();
+        int max = fileList.getMaxSelectionIndex();
+        if(model.moveDown(min, max)) {
+          fileList.getSelectionModel().setSelectionInterval(min+1,max+1);
+        }
       }
     });
 
@@ -89,13 +93,15 @@ public class OrderFilesPanel extends JPanel {
       @Override
       public void valueChanged(ListSelectionEvent e) {
         if(!e.getValueIsAdjusting()) {
-          int i = fileList.getSelectedIndex();
-          if(i < 0) {
+          int min = fileList.getMinSelectionIndex();
+          int max = fileList.getMaxSelectionIndex();
+
+          if(min < 0) {
             up.setEnabled(false);
             down.setEnabled(false);
           } else {
-            up.setEnabled(i > 0);
-            down.setEnabled(i < (model.getSize()-1));
+            up.setEnabled(min > 0);
+            down.setEnabled(max < (model.getSize()-1));
           }
         }
       }
@@ -172,20 +178,28 @@ public class OrderFilesPanel extends JPanel {
       return items.size();
     }
 
-    public void moveUp(int i) {
-      T o1 = items.get(i);
-      T o2 = items.get(i-1);
-      items.set(i, o2);
-      items.set(i-1, o1);
-      fireContentsChanged(this, i-1, i);
+    public boolean moveUp(int min, int max) {
+      if(min <  1) {
+        return false;
+      }
+
+      T o = items.remove(min - 1);
+      items.add(max, o);
+
+      fireContentsChanged(this, min-1, max);
+      return true;
     }
 
-    public void moveDown(int i) {
-      T o1 = items.get(i);
-      T o2 = items.get(i+1);
-      items.set(i, o2);
-      items.set(i+1, o1);
-      fireContentsChanged(this, i, i+1);
+    public boolean  moveDown(int min, int max) {
+      if(max > items.size()-2) {
+        return false;
+      }
+
+      T o = items.remove(max+1);
+      items.add(min, o);
+
+      fireContentsChanged(this, min, max+1);
+      return true;
     }
 
     public void sort(Comparator<T> c) {
