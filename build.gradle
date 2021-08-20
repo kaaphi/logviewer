@@ -1,9 +1,11 @@
 buildscript {
   repositories {
-    jcenter()
+    maven {
+      url "https://plugins.gradle.org/m2/"
+    }
   }
   dependencies {
-    classpath 'edu.sc.seis.gradle:launch4j:2.4.4'
+    classpath "edu.sc.seis.launch4j:launch4j:2.5.0"
   }
 }
 
@@ -22,6 +24,7 @@ createExe {
   mainClassName = "com.kaaphi.logviewer.ui.LogFileViewer"
   icon = "${projectDir}/src/main/resources/icon.ico"
   jvmOptions  = ["-Xmx2048M"]
+  bundledJrePath = "%JAVA_HOME%;%PATH%"
 }
 
 distributions {
